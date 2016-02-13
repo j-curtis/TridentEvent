@@ -8,9 +8,27 @@
 
 #include <cmath>
 #include <iostream>
+#include <fstream>
 
+//////
+//GLOBAL CONSTANTS
+//////
+namespace constant
+{
+extern const double muon_mass;	//mass of muon
+extern const double posi_mass;	//mass of positron/electron
+extern const double proton_mass;//mass of proton
+extern const double neutron_mass;	//mass of neutron
+extern const double nuclear_num;//Mass of nucleus (number of protons)
+extern const double nuclear_mass;//Mass of nucleus with given nuclear number 
+extern const int 	muon_PDG;	//PDG code of muon
+extern const int 	posi_PDG;	//PDG code of positron
+extern const int 	nue_PDG;	//PDG code of electron neutrino
+extern const int 	num_PDG;	//PDG code of muon neutrino
+extern const int 	nuke_PDG;	//PDG code of selected nucleus 
+}
 /////
-//3-vector class 
+//3-VECTOR CLASS
 /////
 class Vector{
 protected:
@@ -20,7 +38,9 @@ protected:
 
 public:
 	Vector(double, double, double);	//This creates a three-vector given components as x,y,z
-	void Print();	//Prints the vector to cout
+	Vector();	//This generates a null (zero vector)
+	void print();	//Prints the vector to cout
+	friend class TridentEvent;	//This is so we can properly access members to print the events
 
 	//Operators
 	double operator *(const Vector&);	//The normal dot-product	
@@ -31,7 +51,7 @@ public:
 
 
 //////
-//4-vector
+//4-VECTOR CLASS
 //////
 class FourVector{
 protected:
@@ -40,40 +60,56 @@ protected:
 
 public:
 	FourVector(double,Vector);	//This creates a four-vector given time component and spatial vector
-	void Print();	//Prints the vector to cout
+	FourVector();	//This is a constructor for a 0 four-vector 
+	void print();	//Prints the vector to cout
+	friend class TridentEvent;	//We need this to be a friend class so we can properly access components for printing the events 
 
 	double operator *(const FourVector&);	//The Lorentz invaraint contraction of two fourvectors
 	FourVector operator +(const FourVector&);	//This adds two fourvectors component-wise
 	friend FourVector operator*(const double,const FourVector&);	//This is for scalar multiplication from the left 
 	FourVector operator -(const FourVector& rh);	//This subtracts two fourvectors component wise 
 };
-/*
+
+double getEnergy(Vector, double);	//This computes the energy of a momentum p and mass m
 
 //////
-//Trident events
+//TRIDENT EVENT CLASS 
 //////
 class TridentEvent{
 public:
-	static FourVector p1;	//Incoming neutrino energy. It will be considered a parameter for all events 
-	static FourVector P;	//Incoming nucleon energy. Also a parameter for all events 
+	static FourVector Pn0;	//Incoming neutrino energy. It will be considered a parameter for all events 
+	static FourVector PN0;	//Incoming nucleon energy. Also a parameter for all events 
 
-	Event(ThreeVector,ThreeVector,ThreeVector);	//An event given by outgoing 3-momenta
+	TridentEvent(Vector,Vector,Vector);	//An event given by outgoing 3-momenta
 	//There are four but one is fixed by conservation laws 
 	//The given ones are outgoing muon, positron, and nucleon. The fixed one is the outgoing neutrino
 	//Four vectors are also fixed by mass shell requiring 
 	//E = sqrt(p^2 + m^2)
 	//These will be generated from the given three vectors 
 
-	void Print();	//This prints the event to cout 
+	std::ostream& printTo(std::ostream&);	//This prints the event to the given ostream
 
 protected:
-	FourVector pn;	//Outgoing neutrino momentum
-	FourVector pm;	//Outgoing muon momentum
-	FourVector pe;	//Outgoin positron momentum
+	FourVector Pn;	//Outgoing neutrino momentum
+	FourVector Pm;	//Outgoing muon momentum
+	FourVector Pe;	//Outgoin positron momentum
 	FourVector PN;	//Outgoing nucleon momentum
 };
-*/
 
-double getEnergy(Vector, double);	//This computes the energy of a momentum p and mass m
-
+//////
+//MISC
+//////
+int calcPDG(int,int);	//This computes the PDG code for a nucleon of given atomic number and mass
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
