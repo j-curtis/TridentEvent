@@ -26,7 +26,9 @@ extern const int 	posi_PDG;	//PDG code of positron
 extern const int 	nue_PDG;	//PDG code of electron neutrino
 extern const int 	num_PDG;	//PDG code of muon neutrino
 extern const int 	nuke_PDG;	//PDG code of selected nucleus 
+extern const double nu_incomingE;	//Incoming neutrino beam energy 
 }
+
 /////
 //3-VECTOR CLASS
 /////
@@ -68,19 +70,31 @@ public:
 	FourVector operator +(const FourVector&);	//This adds two fourvectors component-wise
 	friend FourVector operator*(const double,const FourVector&);	//This is for scalar multiplication from the left 
 	FourVector operator -(const FourVector& rh);	//This subtracts two fourvectors component wise 
+	static double QuadProd(FourVector,FourVector,FourVector,FourVector); //Returns the "quad product" of four four-vectors defined in the appendix A
 };
-
-double getEnergy(Vector, double);	//This computes the energy of a momentum p and mass m
 
 //////
 //TRIDENT EVENT CLASS 
 //////
+/*We label four-vectors for momentum with a capital P
+We have 
+P0 = initial nucleon momentum = P in Lovseth
+P1 = initial neutrino momentum = p1 in Lovseth
+Pf = final nucleon momentum = P' in Lovseth
+P2 = final neutrino momentum = p2 in Lovseth
+P3 = positron momentum = p3 in Lovseth
+P4 = muon momentum = p4 in Lovseth
+*/
 class TridentEvent{
 public:
-	static FourVector Pn0;	//Incoming neutrino energy. It will be considered a parameter for all events 
-	static FourVector PN0;	//Incoming nucleon energy. Also a parameter for all events 
+	static FourVector P0;	//Incoming neutrino energy. It will be considered a parameter for all events 
+	static FourVector P1;	//Incoming nucleon energy. Also a parameter for all events 
+	static double TargetMass;	//The mass of the target nucleon
+	static double TargetMass2;	//The mass of the target nucleon squared
 
 	TridentEvent(Vector,Vector,Vector);	//An event given by outgoing 3-momenta
+	//Arguments are 
+	//P4, P3, P'
 	//There are four but one is fixed by conservation laws 
 	//The given ones are outgoing muon, positron, and nucleon. The fixed one is the outgoing neutrino
 	//Four vectors are also fixed by mass shell requiring 
@@ -90,16 +104,40 @@ public:
 	std::ostream& printTo(std::ostream&);	//This prints the event to the given ostream
 
 protected:
-	FourVector Pn;	//Outgoing neutrino momentum
-	FourVector Pm;	//Outgoing muon momentum
-	FourVector Pe;	//Outgoin positron momentum
-	FourVector PN;	//Outgoing nucleon momentum
+	//These are the raw variables that are measureable 
+	FourVector P2;	//Outgoing neutrino momentum
+	FourVector P4;	//Outgoing muon momentum
+	FourVector P3;	//Outgoin positron momentum
+	FourVector Pf;	//Outgoing nucleon momentum
+
+	//////
+	//DERIVED VARIABLES
+	//////
+	//These are all computed on construction
+	FourVector q;	//The q = (PN - PN0) of the reaction 
+	double q2;	//The q^2 = (PN - PN0)^2 of the reacition
+	double EnergyNormalizations;	//These are the 1/(E2E3E4E') that appear in the denominator of the differential cross section 
+	double Nucleonx;	//The variable "x = q^2/4M^2" needed in the nuclear cross section 
+
+	//We now try to build the leptonic matrix element
+	//We first compute the D3 and D4 functions 
+	double SixProd();		//Returns the six-way product for this event defined in the appendix A of Lovseth
+
+	double D3;	//This is defined to be q^2 - 2q*p3
+	double D4;	//Same, but with p4
+
+	double calcLeptonMatPP();	//This compute the P*L*P matrix contraction for the lepton matrix element
+	double LeptonMatPP;		//The result of the calculation of the P*L*P lepton matrix contraction. We compute at construction
 };
 
 //////
 //MISC
 //////
+
+double getEnergy(Vector, double);	//This computes the energy of a momentum p and mass m
+
 int calcPDG(int,int);	//This computes the PDG code for a nucleon of given atomic number and mass
+
 #endif
 
 
