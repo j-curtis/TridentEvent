@@ -9,15 +9,22 @@ const double 	constant::muon_mass = .1056583715;	//[GeV]
 const double 	constant::posi_mass = .0005109989; 	//[GeV]
 const double 	constant::proton_mass = .938272046;	//[GeV]
 const double 	constant::neutron_mass = .9395654133;	//[GeV]
-const double 	constant::nuclear_num = 12.0;		//[1]
-const double 	constant::nuclear_mass = constant::nuclear_num*constant::proton_mass;	//[GeV]
+const int 		constant::nuclear_A = 12;		//[1]
+const int 		constant::nuclear_Z = 6;		//[1]
+const double 	constant::nuclear_mass = calcNuclearMass(constant::nuclear_Z,constant::nuclear_A);	//[GeV]
 const int 		constant::muon_PDG = 13;	//PDG 
 const int 		constant::posi_PDG = -11;	//PDG 
 const int 		constant::nue_PDG = 12;	//PDG
 const int 		constant::num_PDG = 14;	//PDG 
-const int 		constant::nuke_PDG = calcPDG(6,12);	//PDG generated from the atomic number/mass
+const int 		constant::nuke_PDG = calcPDG(constant::nuclear_Z,constant::nuclear_A);	//PDG generated from the atomic number/mass
 const double 	constant::nu_incomingE = 8.0;	//[GeV]
-
+const double 	constant::Fermimeter = 1.0/.1973269788;	//[1/GeV] 1 Fermimeter = 10^-15 m in units of 1/GeV where hbar = c = 1
+const double 	constant::RMS_nuclear_radius = calcFormFactorConstant(constant::nuclear_A);//[1/GeV] The rms radius of the nucleus in 1/GeV used in the form factor calculation
+const double 	constant::mu_T_proton = 2.792;	//[1] The factor of mu_T for protons 
+const double	constant::mu_T_neutron = -1.913;//[1] The factor of mu_T for neutrons
+const double	constant::z_proton = 1.0;		//[1] This is one for protons and zero for neutrons
+const double 	constant::z_neutron = 0.0;		//[1] This is one for protons and zero for neutrons
+const double 	constant::p_fermi = .235;		//[GeV] The constant p_f used in Lovseth equation 20 for the Fermi exclusion factor 
 /*
 VECTOR CLASS DEFINITIONS
 */
@@ -117,13 +124,32 @@ TridentEvent::TridentEvent(Vector arg1, Vector arg2, Vector arg3): P4(),P3(),Pf(
 	q2 = q*q;		//The q^2 is easy to compute 
 	EnergyNormalizations = 1.0/(E4*E3*Ef*(P2.t));	//The 1/(E2 E3 E4 E') that appears in the denominator of the cross section calculations
 	Nucleonx = q2/(4.0 * TridentEvent::TargetMass2);	//The variable "x = q^2 / 4M^2" needed in the single nucleon scattering case 
-
+	NucleonG = std::pow(1.0+4.88*Nucleonx,-2);	//The variable G = 1/(1+4.88x)^2 used in the single nucleon cross section (Lovseth 11)
 	//Now we compute the leptonic matrix elements 
 	D3 = q2 - 2.0*(q*P3);
 	D4 = q2 - 2.0*(q*P4);
 
 	LeptonMatPP = calcLeptonMatPP();	//We construct the P*L*P lepton matrix element and store it for further use 
-}
+	LeptonMatTr = calcLeptonMatTr();	//We construct the L_ab delta_ab lepton matrix element contraction and store it for later use 
+	FormFactor = std::exp(-std::pow(constant::RMS_nuclear_radius,2)*q2/6.0);	//The nuclear form-factor for this given q^2
+
+	//Coherent matrix element contraction is 4 F^2(q^2) P*L*P
+	coherentMatrixEl = 4.0*std::pow(FormFactor,2.0)*LeptonMatPP;
+
+	//proton matrix element 
+	protonMatrixEl = 4.0*NucleonG*NucleonG*( LeptonMatPP*( std::pow(constant::mu_T_proton*Nucleonx,2) + constant::z_proton ) ) 
+					+ NucleonG*NucleonG	*LeptonMatTr*q2*constant::mu_T_proton*constant::mu_T_proton;
+
+	neutronMatrixEl = 4.0*NucleonG*NucleonG*( LeptonMatPP*( std::pow(constant::mu_T_neutron*Nucleonx,2) + constant::z_neutron ) ) 
+					+ NucleonG*NucleonG	*LeptonMatTr*q2*constant::mu_T_neutron*constant::mu_T_neutron;	
+
+	FermiExclusionFactor = calcFermiExclusionFactor();
+
+	//In Lovseth equation 19 they give the formula
+	//dsigma = disgmacoherent + xclusionfactor*((A-Z)dsigmaneutron + Z dsigmaproton)
+	diffXC = (coherentMatrixEl + FermiExclusionFactor*( (constant::nuclear_A-constant::nuclear_Z)*neutronMatrixEl + constant::nuclear_Z*protonMatrixEl))
+		*(1.0/(EnergyNormalizations*q2*q2));
+}	
 
 double TridentEvent::SixProd(){
 	//Returns the six-way product defined in the appendix
@@ -138,27 +164,28 @@ double TridentEvent::SixProd(){
 }
 
 double TridentEvent::calcLeptonMatPP(){
+	//Lovseth Equation (A1)
 	//The equation is extremely long
 	//We break it up into multiple pieces and construct the total equation from these 
 	double sum = 0.0;
 
 	double line1 = ( (P2*P4)/(D3*D3) )*(
 		4.0*(P0*P3)*(P1*q)*(q*P0) 
-		-TridentEvent::TargetMass2*q2*(P1*P3)
-		+2.0*TridentEvent::TargetMass2*(q*P1)*(q*P3)
+		-TargetMass2*q2*(P1*P3)
+		+2.0*TargetMass2*(q*P1)*(q*P3)
 		-2.0*(P0*P3)*q2*(P1*P0)
 		);
 
 	//line 2 is just line 1 with P2,P4 replacing P1,P3
 	double line2 = ( (P1*P3)/(D4*D4) )*(
 		4.0*(P0*P4)*(P2*q)*(q*P0) 
-		-TridentEvent::TargetMass2*q2*(P2*P4)
-		+2.0*TridentEvent::TargetMass2*(q*P2)*(q*P4)
+		-TargetMass2*q2*(P2*P4)
+		+2.0*TargetMass2*(q*P2)*(q*P4)
 		-2.0*(P0*P4)*q2*(P2*P0)
 		);
 
 	double line3 = (1.0/(D3*D4))*(
-			2.0*TridentEvent::TargetMass2*(
+			2.0*TargetMass2*(
 			  (P4*q)*( (P2*P1)*(P3*q)  - (P2*P3)*(P1*q) ) 
 			- (P2*q)*( (P4*P1)*(P3*q)  - (P4*P3)*(P1*q) )  
 			+ 	  q2*( (P2*P3)*(P2*P1) - (P4*P3)*(P2*P1))
@@ -175,6 +202,40 @@ double TridentEvent::calcLeptonMatPP(){
 	sum = line1 + line2 - line3 - line4;
 
 	return std::pow(2.0,8)*sum;
+}
+
+double TridentEvent::calcLeptonMatTr(){
+	//Lovseth Equation (A2)
+	//The equation is extremely long
+	//We break it up into multiple pieces and construct the total equation from these 
+	double sum = 0.0;
+
+	double term1 = 	((P1*P3)/(D4*D4))*( 2.0*(q*P2)*(constant::muon_mass*constant::muon_mass - q*P4)
+					+ (P2*P4)*(q2-2.0*constant::muon_mass*constant::muon_mass));
+
+	double term2 = 	((P2*P4)/(D3*D3))*( 2.0*(q*P1)*(constant::posi_mass*constant::posi_mass - q*P3)
+					+ (P1*P3)*(q2-2.0*constant::posi_mass*constant::posi_mass));
+
+	double term3 = 	((1.0)/(D3*D4))*(
+					q2*FourVector::QuadProd(P3,P1,P2,P4) 
+					+4.0*(P2*P4)*(P1*P3)*(P3*P4)
+					-2.0*(P2*P4)*FourVector::QuadProd(P1,P3,P4,q)
+					-2.0*(P1*P3)*FourVector::QuadProd(P2,P4,P3,q)
+					);
+
+	sum = term1 + term2 - term3;
+
+	return std::pow(2.0,9)*sum;
+}
+
+double TridentEvent::calcFermiExclusionFactor(){
+	//This is the function X(|q|) used in Lovseth equation 20
+	if( std::sqrt(q.v*q.v) >= 2.0*constant::p_fermi){
+		return 1.0;
+	}
+	else{
+		return 1.5*(std::sqrt(q.v*q.v)/(2.0*constant::p_fermi)) - .5*std::pow( std::sqrt(q.v*q.v)/(2.0*constant::p_fermi),3);
+	}
 }
 
 std::ostream& TridentEvent::printTo(std::ostream& o){
@@ -194,6 +255,8 @@ std::ostream& TridentEvent::printTo(std::ostream& o){
 	o<<constant::nue_PDG <<" 0.0 0.0 0.0 "<<P2.v.x<<" "<<P2.v.y<<" "<<P2.v.z<<" "<<P2.t<<std::endl;
 	return o;
 }
+
+double TridentEvent::getDiffXC(){ return diffXC; }
 
 //Initializing static member variables
 //incoming neutrino momentum vector 
@@ -223,5 +286,14 @@ int calcPDG(int Z,int A){
 double getEnergy(Vector p, double m){
 	double E2 = (p*p) + m*m;
 	return std::sqrt(E2);
+}
+
+//This computes the form-factor constant in units of 1/GeV 
+double calcFormFactorConstant(int A){
+	return (.58 + .82*std::pow(A,1.0/3.0) )*constant::Fermimeter;
+}
+
+double calcNuclearMass(int Z, int A){
+	return constant::proton_mass*Z + (A-Z)*constant::neutron_mass;
 }
 

@@ -19,14 +19,22 @@ extern const double muon_mass;	//mass of muon
 extern const double posi_mass;	//mass of positron/electron
 extern const double proton_mass;//mass of proton
 extern const double neutron_mass;	//mass of neutron
-extern const double nuclear_num;//Mass of nucleus (number of protons)
-extern const double nuclear_mass;//Mass of nucleus with given nuclear number 
+extern const int nuclear_A;//Number of nucleons
+extern const int nuclear_Z;	//Number of protons
+extern const double nuclear_mass;//Mass of nucleus (GeV) with given nuclear number 
 extern const int 	muon_PDG;	//PDG code of muon
 extern const int 	posi_PDG;	//PDG code of positron
 extern const int 	nue_PDG;	//PDG code of electron neutrino
 extern const int 	num_PDG;	//PDG code of muon neutrino
 extern const int 	nuke_PDG;	//PDG code of selected nucleus 
 extern const double nu_incomingE;	//Incoming neutrino beam energy 
+extern const double Fermimeter;	//This is 1 Fermi (F, fm, 10^(-15) m) in units where hbar = c = 1
+extern const double RMS_nuclear_radius;	//This is the RMS nuclear radius, used in the form-factor computation
+extern const double mu_T_proton;		//The factor of mu_T for the proton used in the single nucleon interactions 
+extern const double mu_T_neutron;		//Same but for the neutron instead of the proton
+extern const double z_proton;			//This is one if it is a proton and zero for neutron
+extern const double z_neutron;			//This is one for protons and zero for neutrons
+extern const double p_fermi;			//This is the constant p_f used in the fermi exclusion factor
 }
 
 /////
@@ -103,6 +111,8 @@ public:
 
 	std::ostream& printTo(std::ostream&);	//This prints the event to the given ostream
 
+	double getDiffXC();	//This returns the differential cross section for this event occuring
+
 protected:
 	//These are the raw variables that are measureable 
 	FourVector P2;	//Outgoing neutrino momentum
@@ -118,6 +128,7 @@ protected:
 	double q2;	//The q^2 = (PN - PN0)^2 of the reacition
 	double EnergyNormalizations;	//These are the 1/(E2E3E4E') that appear in the denominator of the differential cross section 
 	double Nucleonx;	//The variable "x = q^2/4M^2" needed in the nuclear cross section 
+	double NucleonG;	//The variable G = (1+4.88x)^-2 needed in the single nucleon scattering
 
 	//We now try to build the leptonic matrix element
 	//We first compute the D3 and D4 functions 
@@ -128,6 +139,31 @@ protected:
 
 	double calcLeptonMatPP();	//This compute the P*L*P matrix contraction for the lepton matrix element
 	double LeptonMatPP;		//The result of the calculation of the P*L*P lepton matrix contraction. We compute at construction
+
+	double calcLeptonMatTr();	//This computes the Trace(L) = delta_ab L_ab contraction of the lepton matrix element 
+	double LeptonMatTr;			//This stores the result of the calculation so we only need to compute it once 
+
+	double FormFactor;	//We need to get the form-factor for this reaction 
+	//So that we can express this in a closed form, we use the approximation of 
+	//F(q) = e^(-a^2q^2/6)
+	//With a = (.58+.82A^(1/3)) Fermi 
+	//And 1 Fermi = 10^-15 m 
+	//We express Fermis in units of 1/Gev using hbar = c = 1
+
+
+	//Matrix Elements for coherent and single-nucleon interaction
+	double coherentMatrixEl;	
+	double protonMatrixEl;
+	double neutronMatrixEl;
+
+	//We put these together into the total cross section
+	//We only need a fermi exclusion factor now
+	double calcFermiExclusionFactor();	//This computes the fermi exclusion factor used in the total cross section
+	double FermiExclusionFactor;	//This is X(|vec q|) in Lovseth
+
+	//The differential cross section (put all together)
+	double diffXC;	
+
 };
 
 //////
@@ -137,6 +173,10 @@ protected:
 double getEnergy(Vector, double);	//This computes the energy of a momentum p and mass m
 
 int calcPDG(int,int);	//This computes the PDG code for a nucleon of given atomic number and mass
+
+double calcFormFactorConstant(int);	//This computes the form-factor constant for a given nuclear number
+
+double calcNuclearMass(int,int);	//This computes the mass of a nucleas with Z protons and A nucleons
 
 #endif
 
