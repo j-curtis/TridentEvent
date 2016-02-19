@@ -3,29 +3,18 @@
 //02/13/2016
 
 #include "TridentEvent.h"
-#include <ctime>
 
 //All energies/momenta/masses are in units of GeV (c = 1)
 
 int main(){
-	Vector p1(12.0,3.0,-4.0);
-	Vector p2(1.0,1.0,1.0);
-	Vector p3(0.0,0.0,10.0);
+	Vector p4(0.0,.197,3.7);
+	Vector p3(86.4e-3,0.0,.704);
+	Vector pf(0.0,0.0,5.0e-3);
 
-	std::clock_t begin = std::clock();
-
-	//We do a time trial to see how long it takes to generate 10^6 event samples 
-	int num_sample = 1e6;
-
-	for(int i = 0; i < num_sample; i++){
-		TridentEvent Event(p1,p2,p3);
-	}
-
-	std::clock_t end = std::clock();
-
-	double elapsed_secs = double(end - begin)/CLOCKS_PER_SEC;
-
-	std::cout<<"Elapsed time: "<<elapsed_secs<<"(s)"<<std::endl;
-
+	TridentEvent Event(p4,p3,pf);
+	Event.printTo(std::cout);
+	std::cout<<std::endl;
+	double dXC = calcDiffXC(Event);
+	std::cout<<dXC<<std::endl;
 	return 0;
 }

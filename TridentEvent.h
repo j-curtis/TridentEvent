@@ -9,6 +9,8 @@
 #include <cmath>
 #include <iostream>
 #include <fstream>
+#include <cstdlib>	
+#include <cstring>
 
 //////
 //GLOBAL CONSTANTS
@@ -57,6 +59,8 @@ public:
 	Vector operator +(const Vector&);	//This adds two three vectors component-wise
 	friend Vector operator*(const double,const Vector&);	//This is for scalar multiplication from the left 
 	Vector operator -(const Vector& rh);	//This subtracts two three vectors component wise 
+
+	friend double magnitude(Vector);	//This returns the magnitude of the passed vector
 };
 
 
@@ -73,6 +77,7 @@ public:
 	FourVector();	//This is a constructor for a 0 four-vector 
 	void print();	//Prints the vector to cout
 	friend class TridentEvent;	//We need this to be a friend class so we can properly access components for printing the events 
+	double getSpatialMagnitude();	//This returns the magnitude of the spatial part of a four-vector
 
 	double operator *(const FourVector&);	//The Lorentz invaraint contraction of two fourvectors
 	FourVector operator +(const FourVector&);	//This adds two fourvectors component-wise
@@ -95,11 +100,9 @@ P4 = muon momentum = p4 in Lovseth
 */
 class TridentEvent{
 public:
-	static FourVector P0;	//Incoming neutrino energy. It will be considered a parameter for all events 
+	static FourVector P;	//Incoming neutrino energy. It will be considered a parameter for all events 
 	static FourVector P1;	//Incoming nucleon energy. Also a parameter for all events 
-	static double TargetMass;	//The mass of the target nucleon
-	static double TargetMass2;	//The mass of the target nucleon squared
-
+	
 	TridentEvent(Vector,Vector,Vector);	//An event given by outgoing 3-momenta
 	//Arguments are 
 	//P4, P3, P'
@@ -109,9 +112,9 @@ public:
 	//E = sqrt(p^2 + m^2)
 	//These will be generated from the given three vectors 
 
-	std::ostream& printTo(std::ostream&);	//This prints the event to the given ostream
+	void printTo(std::ostream&);	//This prints the event to the given ostream
 
-	double getDiffXC();	//This returns the differential cross section for this event occuring
+	friend double calcDiffXC(TridentEvent);	//This externally computes the differential cross section of a given event 
 
 protected:
 	//These are the raw variables that are measureable 
@@ -120,51 +123,44 @@ protected:
 	FourVector P3;	//Outgoin positron momentum
 	FourVector Pf;	//Outgoing nucleon momentum
 
-	//////
-	//DERIVED VARIABLES
-	//////
-	//These are all computed on construction
-	FourVector q;	//The q = (PN - PN0) of the reaction 
-	double q2;	//The q^2 = (PN - PN0)^2 of the reacition
-	double EnergyNormalizations;	//These are the 1/(E2E3E4E') that appear in the denominator of the differential cross section 
-	double Nucleonx;	//The variable "x = q^2/4M^2" needed in the nuclear cross section 
-	double NucleonG;	//The variable G = (1+4.88x)^-2 needed in the single nucleon scattering
-
-	//We now try to build the leptonic matrix element
-	//We first compute the D3 and D4 functions 
-	double SixProd();		//Returns the six-way product for this event defined in the appendix A of Lovseth
-
-	double D3;	//This is defined to be q^2 - 2q*p3
-	double D4;	//Same, but with p4
-
-	double calcLeptonMatPP();	//This compute the P*L*P matrix contraction for the lepton matrix element
-	double LeptonMatPP;		//The result of the calculation of the P*L*P lepton matrix contraction. We compute at construction
-
-	double calcLeptonMatTr();	//This computes the Trace(L) = delta_ab L_ab contraction of the lepton matrix element 
-	double LeptonMatTr;			//This stores the result of the calculation so we only need to compute it once 
-
-	double FormFactor;	//We need to get the form-factor for this reaction 
-	//So that we can express this in a closed form, we use the approximation of 
-	//F(q) = e^(-a^2q^2/6)
-	//With a = (.58+.82A^(1/3)) Fermi 
-	//And 1 Fermi = 10^-15 m 
-	//We express Fermis in units of 1/Gev using hbar = c = 1
-
-
-	//Matrix Elements for coherent and single-nucleon interaction
-	double coherentMatrixEl;	
-	double protonMatrixEl;
-	double neutronMatrixEl;
-
-	//We put these together into the total cross section
-	//We only need a fermi exclusion factor now
-	double calcFermiExclusionFactor();	//This computes the fermi exclusion factor used in the total cross section
-	double FermiExclusionFactor;	//This is X(|vec q|) in Lovseth
-
-	//The differential cross section (put all together)
-	double diffXC;	
-
+	//We make some energies protected members so they are visible to the friend function calcDiffXC
+	double E2;
+	double E3;
+	double E4;
+	double Ef;
 };
+
+//////
+//MC SAMPLER CLASS
+//////
+/*
+This class generates a sample of events via MC sampling
+It will first compute the total cross section given an area of phase space
+Then it will generate a sample according to 
+dP = dsigma/sigma 
+Finally, it will print these events to a given txt file
+*/
+class MCSampler{
+public:
+	MCSampler(double,double,double, int);	//It accepts, at construction, a list of max components for the momenta of each particle and a number of momentum steps per direction  
+
+	void calcTotalXC();	//This will compute the total cross section over the given region of phase space using the integer given as the number of partitions in each dimension
+	std::ostream& printTotalXC(std::ostream&);	//This prints the total cross section to the given ostream 
+	
+	void generateSample(int);	//This will generate a sample of thje given size and write it to the output file
+	std::ostream& printMCSample(std::ostream&);	//This prints the MC sample to the given output 
+
+protected:
+	double max_P3;	//The maximum component of the positron momentum
+	double max_P4;	//The maximum component of the muon momentum
+	double max_Pf;	//The maximum component of the outgoing nucleon momentum
+	int num_momentum_steps;	//The number of momentum steps used in the calculation of the total XC, there are this many steps in each direction in each dimension of phase space
+	
+	double totalXC;	//This is the total cross section that is computed by numerically integrating the differential cross section over the chosen phase space 
+
+	Vector genRandVec(double);	//This uniformly generates a random vector of given maximum magnitude
+};
+
 
 //////
 //MISC
@@ -178,6 +174,7 @@ double calcFormFactorConstant(int);	//This computes the form-factor constant for
 
 double calcNuclearMass(int,int);	//This computes the mass of a nucleas with Z protons and A nucleons
 
+double fermiExclusionFactor(double);	//This computes the fermi exclusion principle factor used in the total cross section calculation
 #endif
 
 
