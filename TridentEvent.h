@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>	
+#include <ctime>
 #include <cstring>
 
 //////
@@ -142,23 +143,24 @@ Finally, it will print these events to a given txt file
 */
 class MCSampler{
 public:
-	MCSampler(double,double,double, int);	//It accepts, at construction, a list of max components for the momenta of each particle and a number of momentum steps per direction  
-
-	void calcTotalXC();	//This will compute the total cross section over the given region of phase space using the integer given as the number of partitions in each dimension
-	std::ostream& printTotalXC(std::ostream&);	//This prints the total cross section to the given ostream 
+	MCSampler();	//This is just a generic constructor  
 	
-	void generateSample(int);	//This will generate a sample of thje given size and write it to the output file
-	std::ostream& printMCSample(std::ostream&);	//This prints the MC sample to the given output 
+	void setP3Range(double,double);	//This sets the volume in P3 space that we integrate over.  
+	//first parameter is max magnitude 
+	//Second parameter is max opening angle 
+	//We integrate symmetrically around the z axis in a cone 
+
+	void setP4Range(double,double);	//Same but for P4 space 
+	void setPfRange(double,double);	//Same but for Pf space 
 
 protected:
-	double max_P3;	//The maximum component of the positron momentum
-	double max_P4;	//The maximum component of the muon momentum
-	double max_Pf;	//The maximum component of the outgoing nucleon momentum
-	int num_momentum_steps;	//The number of momentum steps used in the calculation of the total XC, there are this many steps in each direction in each dimension of phase space
+	double maxP3_r;	//max |P3| 
+	double maxP3_theta;	//max P3 opening angle 
+	double maxP4_r;	//Same but for P4
+	double maxP4_theta;
+	double maxPf_r;
+	double maxPf_theta;
 	
-	double totalXC;	//This is the total cross section that is computed by numerically integrating the differential cross section over the chosen phase space 
-
-	Vector genRandVec(double);	//This uniformly generates a random vector of given maximum magnitude
 };
 
 
@@ -175,6 +177,10 @@ double calcFormFactorConstant(int);	//This computes the form-factor constant for
 double calcNuclearMass(int,int);	//This computes the mass of a nucleas with Z protons and A nucleons
 
 double fermiExclusionFactor(double);	//This computes the fermi exclusion principle factor used in the total cross section calculation
+
+Vector sphericalVector(double,double,double);	//This generates a vector given a radius and polar and azimuthal angle
+
+double getRandRange(double,double);	//This returns a randomly selected double from the given range 
 #endif
 
 

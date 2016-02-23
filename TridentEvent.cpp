@@ -146,27 +146,10 @@ FourVector TridentEvent::P1(constant::nu_incomingE, Vector(0.0, 0.0, constant::n
 FourVector TridentEvent::P(constant::nuclear_mass, Vector());
 
 /*
-//MC Sampler Class
+MC Sampler Class
 */
-//Accepts 
-// max_P3
-// max_P4
-// max_Pf
-// num_momentum_steps
-/*
-MCSampler::MCSampler(double d1, double d2, double d3, int n){
-	max_P3 = d1;
-	max_P4 = d2;
-	max_Pf = d3;
-	num_momentum_steps = n;
-}
+MCSampler::MCSampler(){}
 
-void MCSampler::calcTotalXC(){
-	//This will compute the total cross section by dividing the given phase space into a partition of given size and computing a Riemann sum 
-
-}
-
-*/
 //////
 //MISC
 //////
@@ -191,4 +174,25 @@ double getEnergy(Vector p, double m){
 double calcFormFactorConstant(int A){ return (.58 + .82*std::pow(A,1.0/3.0) )*constant::Fermimeter; }
 
 double calcNuclearMass(int Z, int A){ return constant::proton_mass*Z + (A-Z)*constant::neutron_mass; }
+
+Vector sphericalVector(double radius, double theta, double phi){
+	//We generate a vector from the given spherical components
+	//We use radius, theta, phi as 
+	//z = rcos(theta)
+	//x = rsin(theta)cos(phi)
+	//y = rsin(theta)sin(phi)
+	double z = radius*std::cos(theta);
+	double y = radius*std::sin(theta)*std::sin(phi);
+	double x = radius*std::sin(theta)*std::cos(phi);
+
+	Vector v(x,y,z);
+
+	return v;
+}
+
+double getRandRange(double min, double max){
+	double r = double( std::rand() )/double(RAND_MAX);
+
+	return min + r*(max-min);	
+}
 
